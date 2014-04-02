@@ -1,22 +1,8 @@
-/***********************************************************************
-  ______      _           _   _            _           _     
-  | ___ \    | |         | | (_)          | |         | |    
-  | |_/ /___ | |__   ___ | |_ _  ___ ___  | |     __ _| |__  
-  |    // _ \| '_ \ / _ \| __| |/ __/ __| | |    / _` | '_ \ 
-  | |\ \ (_) | |_) | (_) | |_| | (__\__ \ | |___| (_| | |_) |
-  \_| \_\___/|_.__/ \___/ \__|_|\___|___/ \_____/\__,_|_.__/ 
 
-*************************************************************************/
-/*
-Author: Domingo Esteban
-Universidad Carlos III de Madrid
-Leganes, Madrid, Spain, 2014
-*/
-
-//TODO: Implement it with message_filters!
-//TODO: HumanoidOdometry Destructor
 
 #include "ros/ros.h"
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -25,6 +11,8 @@ Leganes, Madrid, Spain, 2014
 #include <geometry_msgs/Transform.h>
 #include <sensor_msgs/JointState.h>
 #include "teo_msgs/SupportFoot.h"
+#include "tf2_msgs/TFMessage.h"
+
 
 class HumanoidOdometry
 {
@@ -42,14 +30,15 @@ class HumanoidOdometry
 		
 		tf::TransformBroadcaster m_broadcaster;
 		tf::TransformListener m_listener;
+    tf::StampedTransform averiguar;
     tf::StampedTransform tf_rf_to_base, tf_lf_to_base;
 		tf::StampedTransform tf_base_to_rf, tf_base_to_lf;
 		tf::Transform map_to_odom;
 		tf::Transform odom_to_base, odom_to_rf, odom_to_lf;
     void UpdateSupportFoot (const teo_msgs::SupportFoot::ConstPtr& msg);
 
-		void SetInitialPos(tf::StampedTransform tf_base_to_rf, tf::StampedTransform tf_base_to_lf);
 
+		void SetInitialPos(tf::StampedTransform tf_base_to_rf, tf::StampedTransform tf_base_to_lf);
 };
 
 
@@ -67,6 +56,7 @@ void HumanoidOdometry::UpdateSupportFoot (const teo_msgs::SupportFoot::ConstPtr&
   support_foot = msg->support_foot;
 
 	ROS_WARN("SF:%d", support_foot);
+
 
 	try {
 		m_listener.lookupTransform("base_link", "r_sole", ros::Time(0), tf_base_to_rf);
@@ -98,10 +88,10 @@ void HumanoidOdometry::UpdateSupportFoot (const teo_msgs::SupportFoot::ConstPtr&
 				odom_to_rf = odom_to_base * tf_base_to_rf;
 			}
 			else 
-			  ROS_ERROR("Wrong support_foot");
+			ROS_ERROR("Wrong support_foot");
 
-			ROS_INFO("Odom_to_Base --> X:%.4f Y:%.4f Z:%.4f", odom_to_base.getOrigin().getX(), 
-			odom_to_base.getOrigin().getY(), odom_to_base.getOrigin().getZ());
+			ROS_INFO("Odom_to_Base --> X:%.4f Y:%.4f Z:%.4f. Orient: X:%.4f", odom_to_base.getOrigin().getX(), 
+			odom_to_base.getOrigin().getY(), odom_to_base.getOrigin().getZ(), odom_to_base.getRotation().getAxis().getX());
        
 			m_broadcaster.sendTransform(tf::StampedTransform(map_to_odom, ros::Time::now(), "map", "odom"));
 			m_broadcaster.sendTransform(tf::StampedTransform(odom_to_base, ros::Time::now(), "odom", "base_link"));
@@ -160,7 +150,7 @@ void HumanoidOdometry::SetInitialPos(tf::StampedTransform tf_base_to_rf, tf::Sta
 int main(int argc, char **argv)
 {
 	//Initiate a ROS node
-  ros::init(argc, argv,"teo_odom");
+  ros::init(argc, argv,"teo_pub_tf");
 
 	//Create an object of class SubscribeAndPublish that will take care of everything
 	HumanoidOdometry TeoOdometry;
